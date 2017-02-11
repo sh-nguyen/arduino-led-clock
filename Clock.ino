@@ -8,12 +8,12 @@
 #define NBR_MTX 5 
 LedControl lc=LedControl(12,11,10, NBR_MTX);
 const int buttonPin = 2;  
-const int faces = 2;
+const int faces = 3;
 
 char ch0, ch1, ch2, ch3, ch4;
-int t = 0;
 String hrs, mins, days, mths, yrs;
-int buttonState = 0;
+int buttonState = 0, temperature = 99;
+String weather;
 byte a[5];
 byte b[5];
 byte c[5];
@@ -22,6 +22,7 @@ byte e[5];
 byte f[5];
 byte g[5];
 byte h[5];
+byte graphic[8];
 byte final[40];
 
 long referenceTimeColon;
@@ -37,6 +38,7 @@ String format(String in) {
   return in;
 }
 
+// Clock Face
 void clockFace() {
   while (faceState==0) {
     
@@ -67,7 +69,6 @@ void clockFace() {
     importBitmap(char(mins[1]),e);
     importBitmap(char(half),f);
     importBitmap('m',g);
-
     
     clockConcatArray(a,b,c,d,e,f,g,final);
     lc.displayBitmap(0,final,sizeof(final));
@@ -91,16 +92,17 @@ void clockFace() {
         clearArray(final);
         break;
       }
-  }
+      }
 }
 
+// Calendar Face
 void calenderFace() {
     while (faceState == 1) {
       days = String(day());
       days = format(days);
       mths = String(month());
       mths = format(mths);
-      yrs = String(year()-2000);
+      yrs = String(year());
 
       importBitmap(char(days[0]),a);
       importBitmap(char(days[1]),b);
@@ -108,11 +110,47 @@ void calenderFace() {
       importBitmap(char(mths[0]),d);
       importBitmap(char(mths[1]),e);
       importBitmap(char('/'),f);
-      importBitmap(char(yrs[0]),g);
-      importBitmap(char(yrs[1]),h);
+      importBitmap(char(yrs[2]),g);
+      importBitmap(char(yrs[3]),h);
 
       
       calendarConcatArray(a,b,c,d,e,f,g,h,final);
+      lc.displayBitmap(0,final,sizeof(final));
+
+      buttonState = digitalRead(buttonPin);
+      if (buttonState == HIGH){
+        buttonState = LOW;
+        faceState++;
+        referenceTimeFace = millis();
+        delay(500);
+        lc.clearAll();
+        clearArray(final);
+        break;
+      }
+
+      if (millis()-referenceTimeFace > 5000){
+        faceState++;
+        referenceTimeFace = millis();
+        delay(500);
+        lc.clearAll();
+        clearArray(final);
+        break;
+      }
+    }
+}
+
+// Weather Face
+void weatherFace() {
+    while (faceState == 2) {
+
+      importBitmap(char(String(temperature)[0]),a);
+      importBitmap(char(String(temperature)[1]),b);
+      importBitmap(' ',c);
+      importBitmap('C',d);
+      importBitmap('~',e);
+      importBitmap('`',f);
+
+      weatherConcatArray(a,b,c,d,e,f,final);
       lc.displayBitmap(0,final,sizeof(final));
 
       buttonState = digitalRead(buttonPin);
@@ -160,6 +198,7 @@ void clockConcatArray(byte a[], byte b[], byte c[], byte d[], byte e[], byte f[]
   for (int i = 0; i < 5; ++i) {
     final[i+28] = g[i];
   }
+  
 }
 
 void calendarConcatArray(byte a[], byte b[], byte c[], byte d[], byte e[], byte f[], byte g[], byte h[], byte final[]){
@@ -187,6 +226,28 @@ void calendarConcatArray(byte a[], byte b[], byte c[], byte d[], byte e[], byte 
   }
   for (int i = 0; i < 5; ++i) {
     final[i+31] = h[i];
+  }
+}
+
+void weatherConcatArray(byte a[], byte b[], byte c[], byte d[], byte e[], byte f[], byte final[]){
+  
+  for (int i = 0; i < 5; ++i) {
+    final[i] = a[i];
+  }
+  for (int i = 0; i < 5; i++) {
+    final[i+5] = b[i];
+  }
+  for (int i = 0; i < 5; ++i) {
+    final[i+10] = c[i];
+  }
+  for (int i = 0; i < 5; i++) {
+    final[i+15] = d[i];
+  }
+  for (int i = 0; i < 4; i++) {
+    final[i+32] = e[i];
+  }
+  for (int i = 0; i < 4; i++) {
+    final[i+36] = f[i];
   }
 }
 
@@ -218,14 +279,42 @@ void setup() {
     lc.displayChar(0,lc.getCharArrayPosition('S'));  
     lc.displayChar(1,lc.getCharArrayPosition('Y'));  
     lc.displayChar(2,lc.getCharArrayPosition('N'));  
-    lc.displayChar(3,lc.getCharArrayPosition('C'));  
+    lc.displayChar(3,lc.getCharArrayPosition('C'));
+    if (millis() > 5000) {
+      break;
+    }
   }
   if (Serial.available() > 0) {
-                setTime(Serial.parseInt());
-                Serial.print("I received: ");
-                Serial.print(hour());
-                Serial.print(":");
-                Serial.println(minute());
+                setTime(Serial.parseInt());   
+  }
+  
+  while (Serial.available() == 0){
+    lc.displayChar(0,lc.getCharArrayPosition('S'));  
+    lc.displayChar(1,lc.getCharArrayPosition('Y'));  
+    lc.displayChar(2,lc.getCharArrayPosition('N'));  
+    lc.displayChar(3,lc.getCharArrayPosition('C'));
+    lc.displayChar(4,lc.getCharArrayPosition('T'));
+    if (millis() > 5000) {
+      break;
+    }
+  }
+  if (Serial.available() > 0) {
+                temperature = int(Serial.parseInt());
+                Serial.println(temperature);         
+  }
+  while (Serial.available() == 0){
+    lc.displayChar(0,lc.getCharArrayPosition('S'));  
+    lc.displayChar(1,lc.getCharArrayPosition('Y'));  
+    lc.displayChar(2,lc.getCharArrayPosition('N'));  
+    lc.displayChar(3,lc.getCharArrayPosition('C'));
+    lc.displayChar(4,lc.getCharArrayPosition('W'));
+    if (millis() > 5000) {
+      break;
+    }
+  }
+  if (Serial.available() > 0) {
+               weather = String(Serial.readString());
+               Serial.println(weather);             
   }
 
   referenceTimeColon = millis();
@@ -239,6 +328,7 @@ void loop() {
   
   clockFace();
   calenderFace();
+  weatherFace();
 }
 
 
