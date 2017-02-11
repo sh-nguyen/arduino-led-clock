@@ -9,20 +9,12 @@ temperature = 00
 weather = ""
 ##Sunny
 ##Possible Shower
-
-
-def sync():
-    ser = serial.Serial('COM9', 9600)
-    ser.readline()
-    ser.write(str(int(time() + 36000)))
-    ser.write(str(temperature))
-    ser.write(str(weather))
-    ser.close()
+##Showers
 
 def timeKeep():
     timeLabel['text'] = "Current time is : " + strftime("%I:%M:%S %p", localtime());
     root.after(1000,timeKeep)
-
+    
 def request_page(url):
     try:
         source = urlopen(url)
@@ -34,20 +26,37 @@ def request_page(url):
         return False
 
 def weather_search():
+    global temperature
+    global weather
+
     feed_source = request_page(weather_feed)
     temperature = findall('Temperature:</b> (.+?)&deg', feed_source, re.DOTALL)[0]
     weather = findall('description="(.+?)\.', feed_source, re.DOTALL)[0]
+   
+    
+def syncTime():
+    global temperature
+    global weather
+    
+    ser = serial.Serial('COM9', 9600)
+    weather_search()
 
+    sleep(2)
+    ser.write(str(int(time() + 36000)))
+    sleep(2)
+    ser.write(str(int(float(temperature))))
+    sleep(2)
+    ser.write(weather)
+    ser.close()
+    
 root = Tk();
 root.title("Arduino Sync")
 timeLabel = Label(root, text = "Initializing...",
                   font=("Helvetica", 16))
 timeLabel.grid(row = 0, column = 0)
-syncBtn = Button(root, text = "Sync", command = sync, font=("Helvetica", 16))
+syncBtn = Button(root, text = "Sync", command = syncTime, font=("Helvetica", 16))
 syncBtn.grid(row = 0, column = 1)
 
-weather_search()
-    
 root.after(1000,timeKeep);
 root.mainloop()
 
